@@ -14,11 +14,11 @@ spec:
     authentication:
       type: plain
       jaasConfigPassThrough:
-        secretRef: jaasconfig-ccloud
+        secretRef: jaasconfig-ccloud-dest
     tls:
       enabled: true
       secretRef: ccloud-tls-certs
-    bootstrapEndpoint: pkc-xxxx.eastus.azure.confluent.cloud:9092
+    bootstrapEndpoint: pkc-xxxx.us-east-2.azure.confluent.cloud:9092
   sourceKafkaCluster:
     kafkaRestClassRef:
       name: krc-cfk

@@ -1,21 +1,21 @@
 apiVersion: platform.confluent.io/v1beta1
 kind: ClusterLink
 metadata:
-  name: clusterlink-demo-dest
-  namespace: operator
+  name: clusterlink-conn-dest
+  namespace: confluent
 spec:
-  name: clusterlink-demo
+  name: clusterlink-destination-link
   sourceInitiatedLink:
     linkMode: Destination
   destinationKafkaCluster:
     kafkaRestClassRef:
       name: krc-cloud
-      namespace: operator
+      namespace: confluent
   sourceKafkaCluster:
     kafkaRestClassRef:
       name: krc-cfk
-      namespace: operator
+      namespace: confluent
   mirrorTopics:
-    - name: topic.from.source
+    - name: topic.from.destination
   configs:
     local.security.protocol: SASL_SSL

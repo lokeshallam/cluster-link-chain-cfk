@@ -12,11 +12,11 @@ spec:
     tls:
       enabled: true
       secretRef: source-tls-ccloud
-    bootstrapEndpoint: pkc-xxxx.us-east-2.aws.confluent.cloud:9092
-    clusterID: lkc-xxxxx
+    bootstrapEndpoint: pkc-xxxx.eastus.aws.confluent.cloud:9092
+    clusterID: lkc-xxxx
     authentication:
       type: plain
       jaasConfigPassThrough:
         secretRef: ccloud-credential-source
   mirrorTopics:
-  - name: topic.from.source
+  - name: topic.from.destination

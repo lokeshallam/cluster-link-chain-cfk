@@ -40,9 +40,9 @@ cfssl gencert -ca=./certs/cacerts.pem \
 
 ```
 kubectl -n confluent create secret generic source-tls-group1 \
---from-file=fullchain.pem=kafka-server.pem \
---from-file=cacerts.pem=cacerts.pem \
---from-file=privkey.pem=kafka-server-key.pem
+--from-file=fullchain.pem=./certs/kafka-server.pem \
+--from-file=cacerts.pem=./certs/cacerts.pem \
+--from-file=privkey.pem=./certs/kafka-server-key.pem
 
 kubectl -n confluent create secret generic credential \
 --from-file=plain-users.json=creds-kafka-sasl-users.json \
@@ -123,7 +123,10 @@ kubectl -n confluent create secret generic source-tls-ccloud \
     --from-file=cacerts.pem=cacert.pem 
     
 ```
-
+### Create destination initiated cluster link from ccloud to CFK cluster
+```
+kubectl apply -f clusterlink-ccloud-to-cfk.yaml
+```
 
 ### Validate the cluster link 
 
@@ -137,24 +140,22 @@ clusterlink.platform.confluent.io/clusterlink-sourcelink   WDujKk9wTMy0MvilqoHab
 
 
 #### Exec into source kafka pod
-    kubectl -n confluent exec kafka-0 -it -- bash
+    kubectl -n confluent exec kafka-1 -it -- bash
 
 #### Create kafka.properties
 ```
 cat <<EOF > /tmp/kafka.properties
-bootstrap.servers=kafka.operator.svc.cluster.local:9071
+bootstrap.servers=kafka.confluent.svc.cluster.local:9071
 sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=kafka password=kafka-secret;
 security.protocol=SASL_SSL
 sasl.mechanism=PLAIN
-ssl.keystore.location=/mnt/sslcerts/keystore.p12
-ssl.keystore.password=findthepassword
 ssl.truststore.location=/mnt/sslcerts/truststore.p12
-ssl.truststore.password=findthepassword
+ssl.truststore.password=mystorepassword
 EOF
 ```
 
 #### List in CFK cluster to validate the mirror topic is created
-    kafka-topics --list topic.from.source --bootstrap-server kafka.operator.svc.cluster.local:9071 --producer.config /tmp/kafka.properties
+    kafka-topics --list  --bootstrap-server kafka.confluent.svc.cluster.local:9071 --command-config /tmp/kafka.properties
 
 
 Optionally you can also run kafka-console-consumer to consume messagse and validate.
@@ -167,13 +168,6 @@ In this step we will create a source initiated cluster link from Confluent Platf
 
 ### Create rest class 
 
-Update rest end point and kafka cluster id and apply the manifest file
-
-```
-kubectl apply -f kafkarestclass-ccloud.yaml
-```
-
-
 - Create a file `basic_creds_dest.txt` with API Key and API secret in this format
 ```
 username=xxx
@@ -184,13 +178,22 @@ password=xxxxx
 kubectl -n confluent create secret generic restclass-ccloud --from-file=basic.txt=basic_creds_dest.txt
 ```
 
+
+Update rest end point and kafka cluster id and apply the manifest file
+
+```
+kubectl apply -f kafkarestclass-ccloud.yaml
+```
+
+
+
 - Create a file `ccloud_jaas_dest.text` with API Key and API secret in this format
 ```
 sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="xxxx" password="xxxxxxxxxxx";
 ```
 - Create  a secret with this API key and secret
 ```
-kubectl -n confluent create secret generic jaasconfig-ccloud --from-file=plain-jaas.conf=ccloud_jaas_dest.text
+kubectl -n confluent create secret generic jaasconfig-ccloud-dest --from-file=plain-jaas.conf=ccloud_jaas_dest.text
 ```
 
 Note: If you need the server certificates for the ccloud cluster, use the following command. This will return the server cert and the ca cert in that order
