@@ -1,10 +1,10 @@
 apiVersion: platform.confluent.io/v1beta1
 kind: ClusterLink
 metadata:
-  name: clusterlink-conn-dest
+  name: clusterlink-dest-side
   namespace: confluent
 spec:
-  name: clusterlink-destination-link
+  name: cl-destination-init
   sourceInitiatedLink:
     linkMode: Destination
   destinationKafkaCluster:
@@ -16,6 +16,9 @@ spec:
       name: krc-cfk
       namespace: confluent
   mirrorTopics:
-    - name: topic.from.destination
+    - name: topic.from.source
+#     sourceTopicName: mytopic
+#  mirrorTopicOptions:
+#    prefix: myprefix    
   configs:
     local.security.protocol: SASL_SSL

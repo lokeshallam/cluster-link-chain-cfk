@@ -26,8 +26,7 @@ openssl req -x509 -new -nodes \
 
 
 ### Generate server certificate
-
-Update hosts section in kafka-server-domain.json to include hostnames based on your namespace. Add all component hosts kafka,zookeeper, controlcenter etc
+✨Important Note✨ Update hosts section in kafka-server-domain.json to include hostnames based on your namespace. Add all component hosts kafka,zookeeper, controlcenter etc.
 
 ```
 cfssl gencert -ca=./certs/cacerts.pem \
@@ -39,7 +38,7 @@ cfssl gencert -ca=./certs/cacerts.pem \
 ### Create Secrets 
 
 ```
-kubectl -n confluent create secret generic source-tls-group1 \
+kubectl -n confluent create secret generic cfk-server-cert \
 --from-file=fullchain.pem=./certs/kafka-server.pem \
 --from-file=cacerts.pem=./certs/cacerts.pem \
 --from-file=privkey.pem=./certs/kafka-server-key.pem
@@ -50,18 +49,20 @@ kubectl -n confluent create secret generic credential \
 --from-file=basic.txt=creds-basic-users.txt
 
 
-kubectl -n confluent create secret generic rest-credential \
+kubectl -n confluent create secret generic cfk-kafka-rest-credential \
 --from-file=basic.txt=rest-credential.txt
 
 
 kubectl -n confluent create secret generic password-encoder-secret \
 --from-file=password-encoder.txt=passwordencoder.txt
 
+kubectl -n confluent create secret generic controlcenter-basic-usercreds --from-file=basic.txt=c3creds.txt 
+   
 
 ```
 
 
-### Deploy the Cluster 
+### Deploy the Intermediate Cluster on Kubernetes 
 
 Ensure that replicas and namespace and correct and according to your requirements.
 
@@ -74,19 +75,20 @@ Check the pod status and ensure there are no issues deploying the cluster.
 
 ```
 % kubectl get pods
-NAME          READY   STATUS    RESTARTS      AGE
-kafka-0       1/1     Running   0             101m
-kafka-1       1/1     Running   0             101m
-kafka-2       1/1     Running   0             90m
-zookeeper-0   1/1     Running   0             101m
+NAME            READY   STATUS    RESTARTS      AGE
+kafka-0         1/1     Running   0             101m
+kafka-1         1/1     Running   0             101m
+kafka-2         1/1     Running   0             90m
+zookeeper-0     1/1     Running   0             101m
+controlcenter-0 1/1     Running   0             1m
 ```
 
-## Create destination intiated Cluster Link
+## Create destination intiated Cluster Link between source Confluent Cloud cluster and destination kubernetes cluster.
 
 In this step we will create destination initiated cluster link between Confluent Cloud and Confluent Platform.
 
 
-### create a JAAS config ccloud-jaas.conf with API-KEY/SECRET credentials for Confluent Cloud
+### create a JAAS config source-ccloud-jaas.conf with API-KEY/SECRET credentials for Confluent Cloud
 ```
 sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule   required username='[API_KEY]'   password='[SECRET]';
 ```
@@ -94,13 +96,13 @@ sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule   requi
 ### create required secrets
 Create the ccloud secret from the JAAS file
 ```
-kubectl -n confluent create secret generic ccloud-credential-source --from-file=plain-jaas.conf=ccloud-jaas.conf
+kubectl -n confluent create secret generic source-ccloud-jaas-credential --from-file=plain-jaas.conf=source-ccloud-jaas.conf
 ```
 
-### create required certificates to connect to Confluent Cloud
+### create required certificates to connect to Confluent Cloud source cluster
 
 Get the certificates for the ccloud cluster. This will return the server cert and the CA cert in that order.
-Save these certs in fullchain.pem and cacert.pem respectively.
+Save these certs in fullchain_source.pem and cacert_source.pem respectively.
 
 ```
 openssl s_client -showcerts -servername <FQDN> \
@@ -118,9 +120,9 @@ openssl s_client -showcerts -servername pkc-xxxx.us-east-1.aws.confluent.cloud -
 ### Set up secrets
 #### create secret for the certificates to connect to Confluent Cloud
 ```
-kubectl -n confluent create secret generic source-tls-ccloud \
-    --from-file=fullchain.pem=fullchain.pem \
-    --from-file=cacerts.pem=cacert.pem 
+kubectl -n confluent create secret generic source-ccloud-cert \
+    --from-file=fullchain.pem=fullchain_source.pem  \
+    --from-file=cacerts.pem=cacert_source.pem
     
 ```
 ### Create destination initiated cluster link from ccloud to CFK cluster
@@ -128,7 +130,7 @@ kubectl -n confluent create secret generic source-tls-ccloud \
 kubectl apply -f clusterlink-ccloud-to-cfk.yaml
 ```
 
-### Validate the cluster link 
+### Validate the cluster link - CLI
 
 ```
 kubectl get confluent 
@@ -140,7 +142,7 @@ clusterlink.platform.confluent.io/clusterlink-sourcelink   WDujKk9wTMy0MvilqoHab
 
 
 #### Exec into source kafka pod
-    kubectl -n confluent exec kafka-1 -it -- bash
+    kubectl -n confluent exec kafka-0 -it -- bash
 
 #### Create kafka.properties
 ```
@@ -157,25 +159,38 @@ EOF
 #### List in CFK cluster to validate the mirror topic is created
     kafka-topics --list  --bootstrap-server kafka.confluent.svc.cluster.local:9071 --command-config /tmp/kafka.properties
 
+#### Login to control center and validate the topics 
+
 
 Optionally you can also run kafka-console-consumer to consume messagse and validate.
 
+### Validate the cluster link - Control Center UI
 
+Use Control Center to validate the mirror topics, and see the created topic and data.
 
-## Create the Source Initiated Cluster Link
+- Set up port forwarding to Control Center web UI from local machine:
+  ```
+  kubectl port-forward controlcenter-0 9021:9021 --namespace=confluent
+  ```
+- Browse to Control Center:
+  ```
+  https://localhost:9021
+  ```
+
+## Create the Source Initiated Cluster Link from Cluster on Kubernetes to Confluent Cloud.
 
 In this step we will create a source initiated cluster link from Confluent Platform to Confluent Cloud.
 
 ### Create rest class 
 
-- Create a file `basic_creds_dest.txt` with API Key and API secret in this format
+- Create a file `destination-ccloud-basic-creds.txt` with API Key and API secret in this format
 ```
 username=xxx
 password=xxxxx
 ```
 - Create  a secret with this API key and secret
 ```
-kubectl -n confluent create secret generic restclass-ccloud --from-file=basic.txt=basic_creds_dest.txt
+kubectl -n confluent create secret generic destination-ccloud-apicrds --from-file=basic.txt=destination-ccloud-basic-creds.txt
 ```
 
 
@@ -187,13 +202,13 @@ kubectl apply -f kafkarestclass-ccloud.yaml
 
 
 
-- Create a file `ccloud_jaas_dest.text` with API Key and API secret in this format
+- Create a file `destination-ccloud-jaas.conf` with API Key and API secret in this format
 ```
 sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="xxxx" password="xxxxxxxxxxx";
 ```
 - Create  a secret with this API key and secret
 ```
-kubectl -n confluent create secret generic jaasconfig-ccloud-dest --from-file=plain-jaas.conf=ccloud_jaas_dest.text
+kubectl -n confluent create secret generic destination-ccloud-jaas --from-file=plain-jaas.conf=destination-ccloud-jaas.conf
 ```
 
 Note: If you need the server certificates for the ccloud cluster, use the following command. This will return the server cert and the ca cert in that order
@@ -204,7 +219,7 @@ openssl s_client -showcerts -servername pkc-xxxx.eastus.azure.confluent.cloud \
 ```
 - We can create a secret with ccloud certs if we want to use them.
 ```
-kubectl -n confluent create secret generic ccloud-tls-certs \
+kubectl -n confluent create secret generic destination-ccloud-cert \
 --from-file=fullchain.pem=fullchain_dest.pem --from-file=cacerts.pem=cacert_dest.pem
 ```
 
@@ -245,3 +260,15 @@ in the source Confluent Cloud cluster.
     confluent api-key use <API-KEY>
     
     confluent kafka topic consume -b topic.from.source
+
+
+# Troubleshooting tips
+
+- Components fail to come up with certificate issues. Validate you have included correct host names in kafka-server-domain.json
+- Authentication issues with Confluent Cloud - Validate API key and secret and permissions on Confluent Cloud cluster. 
+
+
+# References 
+
+- [Confluent for Kubernetes Examples](https://github.com/confluentinc/confluent-kubernetes-examples/tree/master)
+- [Confluent for Kubernetes Troubleshooting](https://docs.confluent.io/operator/current/co-troubleshooting.html)

@@ -1,7 +1,7 @@
 apiVersion: platform.confluent.io/v1beta1
 kind: ClusterLink
 metadata:
-  name: clusterlink-sourcelink
+  name: cl-source-init
   namespace: confluent
 spec:
   destinationKafkaCluster:
@@ -11,12 +11,12 @@ spec:
   sourceKafkaCluster:
     tls:
       enabled: true
-      secretRef: source-tls-ccloud
-    bootstrapEndpoint: pkc-xxxx.eastus.aws.confluent.cloud:9092
-    clusterID: lkc-xxxx
+      secretRef: source-ccloud-cert
+    bootstrapEndpoint: pkc-xxx.us-east-2.aws.confluent.cloud:9092
+    clusterID: lkc-xxx
     authentication:
       type: plain
       jaasConfigPassThrough:
-        secretRef: ccloud-credential-source
+        secretRef: source-ccloud-jaas-credential
   mirrorTopics:
-  - name: topic.from.destination
+  - name: topic.from.source

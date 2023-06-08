@@ -7,9 +7,9 @@ spec:
   kafkaClusterRef:
     name: kafka
   kafkaRest:
-    endpoint: https://pkc-xxxx.us-east-2.azure.confluent.cloud:443
+    endpoint: https://pkc-xxxx.eastus.azure.confluent.cloud:443
     kafkaClusterID: lkc-xxxx
     authentication:
       type: basic
       basic:
-        secretRef: restclass-ccloud
+        secretRef: destination-ccloud-apicrds

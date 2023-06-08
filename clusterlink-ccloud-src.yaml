@@ -1,10 +1,10 @@
 apiVersion: platform.confluent.io/v1beta1
 kind: ClusterLink
 metadata:
-  name: clusterlink-conn-source
+  name: clusterlink-source-side
   namespace: confluent
 spec:
-  name: clusterlink-destination-link
+  name: cl-destination-init
   sourceInitiatedLink:
     linkMode: Source
   destinationKafkaCluster:
@@ -14,11 +14,11 @@ spec:
     authentication:
       type: plain
       jaasConfigPassThrough:
-        secretRef: jaasconfig-ccloud-dest
+        secretRef: destination-ccloud-jaas
     tls:
       enabled: true
-      secretRef: ccloud-tls-certs
-    bootstrapEndpoint: pkc-xxxx.us-east-2.azure.confluent.cloud:9092
+      secretRef: destination-ccloud-cert
+    bootstrapEndpoint: pkc-xxxx.eastus.azure.confluent.cloud:9092
   sourceKafkaCluster:
     kafkaRestClassRef:
       name: krc-cfk

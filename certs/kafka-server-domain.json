@@ -7,6 +7,7 @@
     "*.kafka.confluent.svc.cluster.local",
     "*.kafka.operator.svc.cluster.local",
     "*.zookeeper.operator.svc.cluster.local",
+    "*.zookeeper.confluent.svc.cluster.local",
     "*.operator.svc.cluster.local",
     "kafka.source.svc.cluster.local",
     "*.kafka.source.svc.cluster.local",
